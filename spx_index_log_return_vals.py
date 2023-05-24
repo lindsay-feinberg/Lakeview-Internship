@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import datetime
 import pytz
 import numpy as np
+from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
 import seaborn as sns
-
+from scipy import stats
 
 def change_to_chicago_tz(quote_datetime: pd.Series):
     return (quote_datetime.dt.tz_localize('US/Eastern')
@@ -47,7 +48,7 @@ filtered_vix = vix_rdr[(vix_rdr.front_month)]
 vix_temp = filtered_vix.groupby(filtered_vix.quote_datetime.dt.date)['close'].apply(lambda x: np.log(x) - np.log(x.shift(1)))
      
 reader['Log_return'] = spx_temp.reset_index(drop=True)
-#filtered_vix['Log_return'] = vix_temp.values
+filtered_vix['Log_return'] = vix_temp.values
 
 logset_spx = reader['Log_return']   
 logset_vix = filtered_vix['Log_return']
@@ -97,29 +98,7 @@ plt.hist(logset_vix, bins=bin_edges_vix, edgecolor='black')
 plt.show()
 
 print(logset_vix.describe())
-"""
-merged_data['date'] = merged_data['datespx'].dt.date
-ave_merged_data = merged_data.groupby('date').apply(lambda x: x[x['datespx'] == x['datespx'].max()])
-ave_merged_data.reset_index(drop=True, inplace=True)
-ave_merged_data.dropna(inplace=True)
 
-
-steps = 27
-ave_spx = []
-ave_vix = []
-for i in range(0, len(merged_data), steps):
-    ave_spx.append(merged_data.loc[i, 'Log_return_x'])
-    
-for i in range(0, len(merged_data), steps):
-    ave_vix.append(merged_data.loc[i,'Log_return_y'])
-
-ave_spx_ser = pd.Series(ave_spx)
-ave_spx_ser.name = 'ave_spx'
-ave_vix_ser = pd.Series(ave_vix)
-ave_vix_ser.name = 'ave_vix'
-
-ave_merged_data = pd.merge(ave_spx_ser, ave_vix_ser, right_index = True, left_index = True)
-"""
 #determining beta
 x = np.array(ave_merged_data['ave_spx']).reshape(-1,1)
 y = np.array(ave_merged_data['ave_vix'])
@@ -144,6 +123,7 @@ plt.scatter(ave_merged_data['ave_spx'], ave_merged_data['ave_vix'])
 plt.show()
 
 z = np.array(ave_merged_data['ave_spx'])
+plt.plot(z, y, 'o')
 m, b = np.polyfit(z, y, 1)
 
 #add linear regression line to scatterplot 
@@ -152,13 +132,45 @@ plt.plot(x, m*z+b)
 print(beta)
 
 plotting_data = pd.DataFrame({'ave_spx': ave_merged_data['ave_spx'], 'ave_vix': ave_merged_data['ave_vix']})
+p = plotting_data['ave_spx']
+q = plotting_data['ave_vix']
+model = sm.OLS(q, p).fit()
+predictions = model.predict(p) 
+
+print_model = model.summary()
+print(print_model)
 
 sns.regplot('ave_spx', 'ave_vix', data= plotting_data)
 plt.show()
+
+print(p.describe())
+print(q.describe())
+plot_tf = (((plotting_data['ave_spx'] >= np.mean(plotting_data['ave_spx']) + .5*np.std(plotting_data['ave_spx'])) | (plotting_data['ave_spx'] <= np.mean(plotting_data['ave_spx']) - .5*np.std(plotting_data['ave_spx']))) & ((plotting_data['ave_vix'] >= np.mean(plotting_data['ave_vix']) + .5*np.std(plotting_data['ave_vix'])) | (plotting_data['ave_vix'] <= np.mean(plotting_data['ave_vix']) - .5*np.std(plotting_data['ave_vix'])))) 
+plotting_data['z_scores_spx'] = stats.zscore(plotting_data['ave_spx'], axis = None)
+plotting_data['z_scores_vix'] = stats.zscore(plotting_data['ave_vix'], axis = None)
+not_outlier = (abs(plotting_data['z_scores_spx']) < 3) & (abs(plotting_data['z_scores_vix']) < 3)
+plotting_data['plott'] = plot_tf & not_outlier
+
+
+filtered_plot = plotting_data[(plotting_data.plott)]
+r = np.array(filtered_plot['ave_spx'])
+e = np.array(filtered_plot['ave_vix'])
+plt.plot(r,e,'o')
+mf, bf = np.polyfit(r, e, 1)
+plt.plot(r, mf*r+bf)
+print(mf)
+
+model_t = sm.OLS(e, r).fit()
+predictions_t = model_t.predict(r)
+print_model_t = model_t.summary()
+print(print_model_t)
+
+#plotting_data['plot'] = (plotting_data['ave_spx'] >= np.mean(plotting_data['ave_spx']) + np.std(plotting_data['ave_spx']))
 # -*- coding: utf-8 
 
 """
 Spyder Editor
+plotting_data['plot'] = ((plotting_data['ave_spx'] >= np.mean(plotting_data['ave_spx']) + np.std(plotting_data['ave_spx'])) or (plotting_data['ave_spx'] <= np.mean(plotting_data['ave_spx']) - np.std(plotting_data['ave_spx']))) and ((plotting_data['ave_vix'] >= np.mean(plotting_data['ave_vix']) + np.std(plotting_data['ave_vix'])) or (plotting_data['ave_vix'] <= np.mean(plotting_data['ave_vix']) - np.std(plotting_data['ave_vix'])))
 
 This is a temporary script file.
 """
