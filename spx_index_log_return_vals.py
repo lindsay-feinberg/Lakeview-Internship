@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 import datetime
 import pytz
 import numpy as np
-from sklearn.linear_model import LinearRegression
+import statsmodels.api as sm
+import seaborn as sns
+
 
 def change_to_chicago_tz(quote_datetime: pd.Series):
     return (quote_datetime.dt.tz_localize('US/Eastern')
@@ -45,19 +47,23 @@ filtered_vix = vix_rdr[(vix_rdr.front_month)]
 vix_temp = filtered_vix.groupby(filtered_vix.quote_datetime.dt.date)['close'].apply(lambda x: np.log(x) - np.log(x.shift(1)))
      
 reader['Log_return'] = spx_temp.reset_index(drop=True)
-filtered_vix['Log_return'] = vix_temp.values
+#filtered_vix['Log_return'] = vix_temp.values
 
 logset_spx = reader['Log_return']   
 logset_vix = filtered_vix['Log_return']
 
 #print(filtered_vix.loc[filtered_vix['Log_return'].idxmax(), 'quote_datetime'])
 
+spxdf = pd.DataFrame({'datespx': reader.groupby(reader.quote_datetime.dt.date)['quote_datetime'].last().reset_index(drop=True), 'closespx': reader.groupby(reader.quote_datetime.dt.date)['close'].last().reset_index(drop=True)})
+spxdf['ave_spx'] = np.log(spxdf.closespx) - np.log(spxdf.closespx.shift(1))
+spxdf['datespx'] = spxdf['datespx'].dt.normalize()
+spxdf.dropna(inplace=True)
 
-spxdf = pd.DataFrame({'datespx': reader['quote_datetime'], 'ave_spx': reader['Log_return']})
+vixdf = pd.DataFrame({'datevix': filtered_vix.groupby(filtered_vix.trade_date.dt.date)['trade_date'].last().reset_index(drop=True), 'closevix': filtered_vix.groupby(filtered_vix.trade_date.dt.date)['close'].last().reset_index(drop=True)})
+vixdf['ave_vix'] = np.log(vixdf.closevix) - np.log(vixdf.closevix.shift(1))
+vixdf.dropna(inplace=True)
 
-vixdf = pd.DataFrame({'datevix': filtered_vix['quote_datetime'], 'ave_vix': filtered_vix['Log_return']})
-
-merged_data = pd.merge(spxdf, vixdf, left_on= 'datespx', right_on = 'datevix', how = 'inner')
+ave_merged_data = pd.merge(spxdf, vixdf, left_on= 'datespx', right_on = 'datevix', how = 'inner')
 
 
 
@@ -91,14 +97,13 @@ plt.hist(logset_vix, bins=bin_edges_vix, edgecolor='black')
 plt.show()
 
 print(logset_vix.describe())
-
+"""
 merged_data['date'] = merged_data['datespx'].dt.date
 ave_merged_data = merged_data.groupby('date').apply(lambda x: x[x['datespx'] == x['datespx'].max()])
 ave_merged_data.reset_index(drop=True, inplace=True)
 ave_merged_data.dropna(inplace=True)
 
 
-"""
 steps = 27
 ave_spx = []
 ave_vix = []
@@ -137,8 +142,19 @@ r_sq = 1 - ssr/sst
 
 plt.scatter(ave_merged_data['ave_spx'], ave_merged_data['ave_vix'])
 plt.show()
+
+z = np.array(ave_merged_data['ave_spx'])
+m, b = np.polyfit(z, y, 1)
+
+#add linear regression line to scatterplot 
+plt.plot(x, m*z+b)
+
 print(beta)
 
+plotting_data = pd.DataFrame({'ave_spx': ave_merged_data['ave_spx'], 'ave_vix': ave_merged_data['ave_vix']})
+
+sns.regplot('ave_spx', 'ave_vix', data= plotting_data)
+plt.show()
 # -*- coding: utf-8 
 
 """
