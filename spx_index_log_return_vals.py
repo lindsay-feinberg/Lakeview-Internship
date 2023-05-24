@@ -9,14 +9,12 @@ from sklearn.linear_model import LinearRegression
 import statsmodels.api as sm
 import seaborn as sns
 from scipy import stats
+from scipy.stats import beta
 
 def change_to_chicago_tz(quote_datetime: pd.Series):
     return (quote_datetime.dt.tz_localize('US/Eastern')
                               .dt.tz_convert('US/Central')
                               .dt.tz_localize(None))
-
-
-
 
 
 #reading in file
@@ -164,6 +162,22 @@ model_t = sm.OLS(e, r).fit()
 predictions_t = model_t.predict(r)
 print_model_t = model_t.summary()
 print(print_model_t)
+
+#testing hypotheses, not rolling
+varspx = ave_merged_data.groupby(ave_merged_data.datespx.dt.year).apply(lambda x: x['ave_spx'].cov(x['ave_spx']))
+covx = ave_merged_data.groupby(ave_merged_data.datespx.dt.year).apply(lambda x: x['ave_spx'].cov(x['ave_vix']))
+
+beta_series =  covx / varspx
+
+#testing hypothesis, rolling 
+temp_df = pd.DataFrame({'ave_spx': ave_merged_data['ave_spx'], 'ave_vix': ave_merged_data['ave_vix']})
+varspx_rolling = temp_df.rolling(252).var()['ave_spx']
+covx_rolling_df = temp_df.rolling(252).cov()['ave_vix']
+covx_rolling_df.index = covx_rolling_df.index.get_level_values(1)
+covx_rolling_df = covx_rolling_df[covx_rolling_df.index == 'ave_spx'].reset_index(level = 0, drop = True)
+
+
+beta_series_rolling = covx_rolling_df / varspx_rolling
 
 #plotting_data['plot'] = (plotting_data['ave_spx'] >= np.mean(plotting_data['ave_spx']) + np.std(plotting_data['ave_spx']))
 # -*- coding: utf-8 
