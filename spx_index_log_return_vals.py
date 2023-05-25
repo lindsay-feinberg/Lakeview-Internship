@@ -138,7 +138,7 @@ predictions = model.predict(p)
 print_model = model.summary()
 print(print_model)
 
-sns.regplot('ave_spx', 'ave_vix', data= plotting_data)
+#sns.regplot('ave_spx', 'ave_vix', data= plotting_data)
 plt.show()
 
 print(p.describe())
@@ -177,7 +177,12 @@ covx_rolling_df.index = covx_rolling_df.index.get_level_values(1)
 covx_rolling_df = covx_rolling_df[covx_rolling_df.index == 'ave_spx'].reset_index(level = 0, drop = True)
 
 
-beta_series_rolling = covx_rolling_df / varspx_rolling
+beta_series_rolling = (covx_rolling_df / varspx_rolling)
+graphing_df = pd.DataFrame({'beta_rolling': beta_series_rolling})
+graphing_df.index = ave_merged_data['datespx']
+graphing_df.index.name = 'Date'
+graphing_df = graphing_df.dropna()
+#beta_series_rolling = beta_series_rolling.dropna()
 
 #plotting_data['plot'] = (plotting_data['ave_spx'] >= np.mean(plotting_data['ave_spx']) + np.std(plotting_data['ave_spx']))
 # -*- coding: utf-8 
