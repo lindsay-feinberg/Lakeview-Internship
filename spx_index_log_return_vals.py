@@ -33,6 +33,80 @@ def log_return(df):
     return np.log(df.close) - np.log(df.close.shift(1))
 
 
+def plotting_scatterplots(df):
+    plotting_data = pd.DataFrame(
+        {"log_return_spx": df.log_return_spx, "log_return_vix": df.log_return_vix}
+    )
+    p = plotting_data.log_return_spx
+    q = plotting_data.log_return_vix
+    model = sm.OLS(q, p).fit()
+    predictions = model.predict(p)
+    
+    print_model = model.summary()
+    print(print_model)
+    
+    # sns.regplot('ave_spx', 'ave_vix', data= plotting_data)
+    plt.show()
+    
+    print(p.describe())
+    print(q.describe())
+    """ plot_tf = (
+        (
+            plotting_data.log_return_spx
+            >= np.mean(plotting_data.log_return_spx) + 0.5 * np.std(plotting_data.log_return_spx)
+        )
+        | (
+            plotting_data.log_return_spx
+            <= np.mean(plotting_data.log_return_spx) - 0.5 * np.std(plotting_data.log_return_spx)
+        )
+    ) & (
+        (
+            plotting_data.log_return_vix
+            >= np.mean(plotting_data.log_return_vix) + 0.5 * np.std(plotting_data.log_return_vix)
+        )
+        | (
+            plotting_data.log_return_vix
+            <= np.mean(plotting_data.log_return_vix) - 0.5 * np.std(plotting_data.log_return_vix)
+        )
+    )
+    plotting_data["z_scores_spx"] = stats.zscore(plotting_data.log_return_spx, axis=None)
+    plotting_data["z_scores_vix"] = stats.zscore(plotting_data.log_return_vix, axis=None)
+    not_outlier = (abs(plotting_data["z_scores_spx"]) < 3) & (
+        abs(plotting_data["z_scores_vix"]) < 3
+    )
+    plotting_data["plott"] = plot_tf & not_outlier
+    
+    
+    filtered_plot = plotting_data[(plotting_data.plott)]
+    r = np.array(filtered_plot.log_return_spx)
+    e = np.array(filtered_plot.log_return_vix)
+    """
+    r = np.array(plotting_data.log_return_spx)
+    e = np.array(plotting_data.log_return_vix)
+    plt.plot(r, e, "o")
+    mf, bf = np.polyfit(r, e, 1)
+    plt.plot(r, mf * r + bf)
+    print(mf)
+    
+    model_t = sm.OLS(e, r).fit()
+    predictions_t = model_t.predict(r)
+    print_model_t = model_t.summary()
+    print(print_model_t)
+
+
+
+def beta_per_year(df):
+    var = df.groupby(df.trade_date.dt.year).apply(
+        lambda x: x.log_return_spx.cov(x.log_return_spx)
+    )
+    cov = df.groupby(df.trade_date.dt.year).apply(
+        lambda x: x.log_return_spx.cov(x.log_return_vix)
+    )
+    beta_series_in_function = cov / var
+    beta_series_in_function.index = pd.to_datetime(beta_series_in_function.index, format = '%Y')
+    return beta_series_in_function
+
+
 def main():
     # reading in files
     spx_reader = read_in_files("L:\Lakeview Investment Group\Lindsay\spx_index.csv")
@@ -75,6 +149,7 @@ def main():
     
     # making trade_dates column for spx
     spx_reader['trade_date'] = spx_reader.quote_datetime.dt.date
+    vix_reader['trade_date'] = vix_reader.quote_datetime.dt.date
     
     # filtering spx and vix for only trade_date and close
     spxdf = filtering_daily(spx_reader)
@@ -174,75 +249,16 @@ def main():
     # add linear regression line to scatterplot
     plt.plot(z, m * z + b)
     
-    print(beta)
-    
-    plotting_data = pd.DataFrame(
-        {"log_return_spx": ave_merged_data.log_return_spx, "log_return_vix": ave_merged_data.log_return_vix}
-    )
-    p = plotting_data.log_return_spx
-    q = plotting_data.log_return_vix
-    model = sm.OLS(q, p).fit()
-    predictions = model.predict(p)
-    
-    print_model = model.summary()
-    print(print_model)
-    
-    # sns.regplot('ave_spx', 'ave_vix', data= plotting_data)
-    plt.show()
-    
-    print(p.describe())
-    print(q.describe())
-    plot_tf = (
-        (
-            plotting_data.log_return_spx
-            >= np.mean(plotting_data.log_return_spx) + 0.5 * np.std(plotting_data.log_return_spx)
-        )
-        | (
-            plotting_data.log_return_spx
-            <= np.mean(plotting_data.log_return_spx) - 0.5 * np.std(plotting_data.log_return_spx)
-        )
-    ) & (
-        (
-            plotting_data.log_return_vix
-            >= np.mean(plotting_data.log_return_vix) + 0.5 * np.std(plotting_data.log_return_vix)
-        )
-        | (
-            plotting_data.log_return_vix
-            <= np.mean(plotting_data.log_return_vix) - 0.5 * np.std(plotting_data.log_return_vix)
-        )
-    )
-    plotting_data["z_scores_spx"] = stats.zscore(plotting_data.log_return_spx, axis=None)
-    plotting_data["z_scores_vix"] = stats.zscore(plotting_data.log_return_vix, axis=None)
-    not_outlier = (abs(plotting_data["z_scores_spx"]) < 3) & (
-        abs(plotting_data["z_scores_vix"]) < 3
-    )
-    plotting_data["plott"] = plot_tf & not_outlier
-    
-    
-    filtered_plot = plotting_data[(plotting_data.plott)]
-    r = np.array(filtered_plot.log_return_spx)
-    e = np.array(filtered_plot.log_return_vix)
-    plt.plot(r, e, "o")
-    mf, bf = np.polyfit(r, e, 1)
-    plt.plot(r, mf * r + bf)
-    print(mf)
-    
-    model_t = sm.OLS(e, r).fit()
-    predictions_t = model_t.predict(r)
-    print_model_t = model_t.summary()
-    print(print_model_t)
+    print(beta) 
+   
+    #plotting data
+   
+    plotting_scatterplots(ave_merged_data)
     
     #converting trade_date to datetime
     ave_merged_data["trade_date"] = pd.to_datetime(ave_merged_data.trade_date)
     # testing hypotheses, not rolling
-    varspx = ave_merged_data.groupby(ave_merged_data.trade_date.dt.year).apply(
-        lambda x: x.log_return_spx.cov(x.log_return_spx)
-    )
-    covx = ave_merged_data.groupby(ave_merged_data.trade_date.dt.year).apply(
-        lambda x: x.log_return_spx.cov(x.log_return_vix)
-    )
-    
-    beta_series = covx / varspx
+    beta_series = beta_per_year(ave_merged_data)
     
     # testing hypothesis, rolling
     temp_df = pd.DataFrame(
@@ -261,6 +277,19 @@ def main():
     graphing_df.index = ave_merged_data["trade_date"]
     graphing_df.index.name = "Date"
     graphing_df = graphing_df.dropna()
+    
+    #starting up and down spx hypothesis
+    negative_spx_df = ave_merged_data[ave_merged_data.log_return_spx <= 0]
+    plotting_scatterplots(negative_spx_df)
+    print("donefirst")
+    positive_spx_df = ave_merged_data[ave_merged_data.log_return_spx > 0]
+    plotting_scatterplots(positive_spx_df)
+    
+    #getting beta series for negative spx
+    beta_series_negative_spx = beta_per_year(negative_spx_df)
+    #getting beta series for positive spx
+    beta_series_positive_spx = beta_per_year(positive_spx_df)
+    
 
 if __name__ == "__main__":
     main()
