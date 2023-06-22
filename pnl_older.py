@@ -61,14 +61,23 @@ unique_trade_dates = pd.unique(stock_option_df.date)
 extra_dates = [datetime(2019, 10, 31), datetime(2019, 11, 29), 
                                 datetime(2019, 12, 31), datetime(2020, 1, 31),
                                 datetime(2020, 4, 30), datetime(2020, 5, 29), 
-                                datetime(2020, 7,31), datetime(2020, 10, 30)]
+                                datetime(2020, 7,31), datetime(2020, 10, 30), 
+                                datetime(2020, 1, 17), datetime(2020, 3, 20),
+                                datetime(2020, 5, 22), datetime(2020, 6, 19),
+                                datetime(2020, 7, 17), datetime(2022, 9, 2),
+                                datetime(2022, 9, 9), datetime(2022, 9, 16),
+                                datetime(2022, 10, 21), datetime(2022, 11, 18),
+                                datetime(2022, 12, 16), datetime(2023, 1, 20),
+                                datetime(2023, 2, 17), datetime(2023, 3, 17),
+                                datetime(2023, 6, 16), datetime(2023, 9, 15),
+                                datetime(2024, 1, 19)]
 
 #combining and sorting full list of unique dates
 extra_dates = pd.Series(extra_dates)
 unique_trade_dates = pd.Series(unique_trade_dates)
 unique_trade_dates = pd.concat([extra_dates, unique_trade_dates])
-unique_trade_dates = unique_trade_dates.sort_values()
-
+unique_trade_dates = unique_trade_dates.sort_values().reset_index(drop=True)
+        
 #set beginning and end of time period
 s_date = datetime(2019, 9, 1)
 e_date = datetime(2022, 8, 31)
@@ -80,11 +89,13 @@ d_list.append(datetime(2021, 5, 28))
 #set up monthly dictionary
 monthly_dict = {}
 exp_dict = {}
-
+#unique_trade_dates = unique_trade_dates[2:6]
+lis = []
 #loop through each trade date
 for date in unique_trade_dates:  
     #get a dataframe with only trades of that day
     day_trades = stock_option_df[stock_option_df.date == date]
+    expiring_df = stock_option_df[stock_option_df.expiration == date]
     
     #loop through all trades of that day
     for index in day_trades.index:
@@ -98,11 +109,11 @@ for date in unique_trade_dates:
         
         #checking if ticker is in dictionary
         if tick in pnl_dict.keys():
-            
             #getting current values 
             current_weighted_ave = pnl_dict[tick][0]
             current_position = pnl_dict[tick][1]
             current_pnl = pnl_dict[tick][2]
+            current_type = pnl_dict[tick][3]
             
             #getting new position after trade
             new_position = current_position + real_quantity
@@ -114,25 +125,20 @@ for date in unique_trade_dates:
                 #get new weighted ave
                 new_weighted_ave = ((current_weighted_ave*current_position + real_quantity*day_trades.at[index, 'price']) 
                                 / new_position)
-                pnl_dict[tick] = [new_weighted_ave, new_position, current_pnl]
+                pnl_dict[tick] = [new_weighted_ave, new_position, current_pnl, current_type]
             
             else:
                 #get new pnl
                 new_pnl = (-day_trades.at[index, 'price'] + current_weighted_ave)*(quantity)
-                pnl_dict[tick] = [current_weighted_ave, new_position, new_pnl]
+                pnl_dict[tick] = [current_weighted_ave, new_position, new_pnl, current_type]
             
         else:
             #adding new ticker into dictionary
-            pnl_dict[tick] = [day_trades.at[index, 'price'], real_quantity, 0]
-       
-        if day_trades.at[index, 'expiration'] == date:
-            new_pnl = pnl_dict[tick][0]*pnl_dict[tick][1]
-            exp_dict[tick] = [pnl_dict[tick][0],0,new_pnl]
-            del pnl_dict[tick]
-            
+            pnl_dict[tick] = [day_trades.at[index, 'price'], real_quantity, 0, day_trades.at[index, 'type']]
+          
     #get a dataframe with only trades of that day
     daily_trades = assign_exer_df[assign_exer_df.date == date]
-    
+    lis.append(day_trades)
     #loop through all trades of that day
     for index in daily_trades.index:
         #ticker and quantities assign and exer
@@ -149,22 +155,27 @@ for date in unique_trade_dates:
             current_weighted_ave = pnl_dict[tick_assign_exer][0]
             current_position = pnl_dict[tick_assign_exer][1]
             current_pnl = pnl_dict[tick_assign_exer][2]
-            
+            current_type = pnl_dict[tick_assign_exer][3]
+    
             #getting new position
-            new_pos = option_quantity + current_position
+            if daily_trades.at[index, 'ticker'] == 'EXER':
+                new_pos = abs(option_quantity) + current_position
+            else:
+                new_pos = -abs(option_quantity) + current_position
             
             #new pnl 
             new_pnl_ae = true_price(daily_trades, index, current_pnl, equity_quantity, current_weighted_ave)
-            pnl_dict[tick_assign_exer] = [current_weighted_ave, new_pos, new_pnl_ae]
+            pnl_dict[tick_assign_exer] = [current_weighted_ave, new_pos, new_pnl_ae, current_type]
         else:
-            pnl_dict[tick_assign_exer] = [0, option_quantity, option_quantity*daily_trades.at[index, 'price']]
+            pnl_dict[tick_assign_exer] = [0, option_quantity, option_quantity*daily_trades.at[index, 'price'], 'OPTION']
         
         #equity
         if equity_name in pnl_dict.keys():
             #getting current values 
-            current_weighted_ave = pnl_dict[tick_assign_exer][0]
-            current_position = pnl_dict[tick_assign_exer][1]
-            current_pnl = pnl_dict[tick_assign_exer][2]
+            current_weighted_ave = pnl_dict[equity_name][0]
+            current_position = pnl_dict[equity_name][1]
+            current_pnl = pnl_dict[equity_name][2]
+            current_type = pnl_dict[equity_name][3]
             
             #getting new position
             new_pos = equity_quantity + current_position
@@ -172,9 +183,20 @@ for date in unique_trade_dates:
             #new pnl
             new_pnl_ae = true_price(daily_trades, index, current_pnl, equity_quantity, current_weighted_ave)
             
-            pnl_dict[equity_name] = [current_weighted_ave, new_pos, new_pnl_ae]
+            pnl_dict[equity_name] = [current_weighted_ave, new_pos, new_pnl_ae, current_type]
         else:
-            pnl_dict[equity_name] = [0, equity_quantity, equity_quantity*daily_trades.at[index, 'price']]
+            pnl_dict[equity_name] = [0, equity_quantity, equity_quantity*daily_trades.at[index, 'price'], 'STOCK']
+    
+    #checking if holding when it expires
+    for index in expiring_df.index: 
+        tick = expiring_df.at[index, 'ticker']
+        if (pnl_dict[tick][1] != 0):
+            current_weighted_ave = pnl_dict[tick][0]
+            current_position = pnl_dict[tick][1]
+            current_pnl = pnl_dict[tick][2]
+            current_type = pnl_dict[tick][3]
+            pnl_dict[tick] = [current_weighted_ave, 0, current_pnl + current_weighted_ave*current_position*100, current_type]       
+            
     #checking if end of month
     if date in d_list:
         print(date)
@@ -188,29 +210,32 @@ for date in unique_trade_dates:
                current_weighted_ave = pnl_copy[ticker][0]
                current_position = pnl_copy[ticker][1]
                current_pnl = pnl_copy[ticker][2]
+               current_type = pnl_copy[ticker][3]
                
                #getting new price at the end of the month
                new_price = bloomberg_df.at[date, ticker]
                if str(new_price) == 'nan':
-                   pnl_copy[ticker] = [current_weighted_ave, current_position, (current_pnl)]
+                   pnl_copy[ticker] = [0, current_position, (current_pnl), current_type]
                else:   
-                   new_pnl = current_pnl + bloomberg_df.at[date, ticker] - current_weighted_ave
-                   pnl_copy[ticker] = [current_weighted_ave, current_position, new_pnl]
-        pnl_copy.update(exp_dict)
+                   if current_type == 'OPTION':
+                       quantity = 100 * current_position
+                       
+                   new_pnl = current_pnl + (bloomberg_df.at[date, ticker] - current_weighted_ave)*quantity
+                   pnl_copy[ticker] = [current_weighted_ave, current_position, new_pnl, current_type]
         #assigning values to monthly dictionary
         monthly_dict[date] = pnl_copy
-        exp_dict = {}
         
         
         #assigning new values to price and pnl
         for ticker in pnl_copy.keys():
             if str(ticker) != 'nan':
                current_position = pnl_copy[ticker][1]
+               current_type = pnl_copy[ticker][3]
                new_price = bloomberg_df.at[date, ticker]
                if str(new_price) == 'nan':
-                   pnl_dict[ticker] = [current_weighted_ave, current_position, 0]
+                   pnl_dict[ticker] = [current_weighted_ave, current_position, 0, current_type]
                else:   
-                   pnl_dict[ticker] = [new_price, current_position, 0]
+                   pnl_dict[ticker] = [new_price, current_position, 0, current_type]
 
     
     
