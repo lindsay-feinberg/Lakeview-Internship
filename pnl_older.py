@@ -220,8 +220,7 @@ for date in unique_trade_dates:
                    pnl_copy[ticker] = [0, current_position, (current_pnl), current_type]
                else:   
                    if current_type == 'OPTION':
-                       quantity = 100 * current_position
-                       
+                       quantity = 100 * current_position   
                    new_pnl = current_pnl + (new_price - current_weighted_ave)*quantity
                    pnl_copy[ticker] = [current_weighted_ave, current_position, new_pnl, current_type]
         #assigning values to monthly dictionary
