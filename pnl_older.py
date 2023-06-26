@@ -150,6 +150,11 @@ for date in unique_trade_dates:
         equity_quantity = daily_trades.at[index, 'quantity']
         option_quantity = equity_quantity/100
         
+        if equity_name == 'VIAC Equity':
+            equity_name = 'PARA Equity'
+        elif equity_name == 'FB Equity':
+            equity_name = 'META Equity'
+        
         #checking if ticker is in dictionary
         if tick_assign_exer in pnl_dict.keys():
             #getting current values 
@@ -205,6 +210,8 @@ for date in unique_trade_dates:
         #copying dictionary so values are not changed
         pnl_copy = pnl_dict.copy()
         
+        #setting up monthly_pnl
+        month_pnl = 0
         #looping through each ticker
         for ticker in pnl_copy.keys():
             if str(ticker) != 'nan':
@@ -218,13 +225,15 @@ for date in unique_trade_dates:
                new_price = bloomberg_df.at[date, ticker]
                if str(new_price) == 'nan':
                    pnl_copy[ticker] = [0, current_position, (current_pnl), current_type]
+                   month_pnl += current_pnl
                else:   
                    if current_type == 'OPTION':
                        quantity = 100 * current_position   
                    new_pnl = current_pnl + (new_price - current_weighted_ave)*quantity
+                   month_pnl += new_pnl
                    pnl_copy[ticker] = [current_weighted_ave, current_position, new_pnl, current_type]
         #assigning values to monthly dictionary
-        monthly_dict[date] = pnl_copy
+        monthly_dict[date] = (pnl_copy, month_pnl)
         
         #assigning new values to price and pnl
         for ticker in pnl_copy.keys():
