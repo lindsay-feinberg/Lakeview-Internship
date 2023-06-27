@@ -8,6 +8,7 @@ Created on Mon Jun 12 09:17:42 2023
 import pandas as pd
 import numpy as np
 from openpyxl import Workbook
+import math
 
 def check_sign_change(df):
     list = []
@@ -177,8 +178,9 @@ file_list = ([r'L:/Lakeview Investment Group/Lindsay/vix tracker paste values 8.
               r'L:/Lakeview Investment Group/Lindsay/vix tracker 3.31.23 paste values.xlsx',
               r'L:/Lakeview Investment Group/Lindsay/vix tracker 4.17.23 paste values.xlsx',
               r'L:/Lakeview Investment Group/Lindsay/vix tracker 4.28.23 paste values.xlsx',
-              r'L:/Lakeview Investment Group/Lindsay/vix tracker 5.15.23 paste values.xlsx',
-              r'L:/Lakeview Investment Group/Lindsay/vix tracker 5.31.23 paste values.xlsx'
+              r'L:/Lakeview Investment Group/Lindsay/vix tracker 5.16.23 paste values.xlsx',
+              r'L:/Lakeview Investment Group/Lindsay/vix tracker 5.31.23 paste values.xlsx',
+              r'L:/Lakeview Investment Group/Lindsay/vix tracker 6.16.23 paste values.xlsx'
               ])
 date_list = (['8.20.18', '8.31.18', '9.17.18', '9.28.18', '10.16.18', '10.31.18',
               '11.19.18', '11.30.18', '12.17.18', '12.31.18', '1.14.19', '1.31.19', 
@@ -199,7 +201,7 @@ date_list = (['8.20.18', '8.31.18', '9.17.18', '9.28.18', '10.16.18', '10.31.18'
               '8.15.22', '8.31.22', '9.19.22', '9.30.22', '10.17.22', '10.31.22',
               '11.14.22', '11.30.22', '12.19.22', '12.30.22', '1.17.23', '1.31.23',
               '2.13.23', '2.28.23', '3.20.23', '3.31.23', '4.17.23', '4.28.23', 
-              '5.15.23', '5.31.23'
+              '5.16.23', '5.31.23', '6.16.23'
               ])
 print(len(file_list))
 print(len(date_list))
@@ -216,6 +218,39 @@ print(concat_df.index_column)
 pivot_df = concat_df.pivot(index = 'date_column', columns = 'index_column', values = 'delta_exposure')
 change = check_sign_change(pivot_df)
 
+pivot_df.to_excel(excel_writer = r"L:/Lakeview Investment Group/Lindsay/firm_exposure_together.xlsx")
+sign_list = []
+math_sign = []
+for column in pivot_df.columns:
+    sign = 0
+    for date in pivot_df.index:
+        if not(math.isnan(pivot_df.at[date, column])):
+            if (pivot_df.at[date, column] != 0):
+                if sign != 0:
+                    if sign == math.copysign(1, pivot_df.at[date,column]):
+                        sign = sign
+                    else:
+                        sign_list.append('mixed')
+                        math_sign.append(0)
+                        sign = 10
+                        break
+                else:
+                    sign = math.copysign(1, pivot_df.at[date,column])
+    if sign == 1:
+        sign_list.append('long')
+        math_sign.append(100)
+    elif sign == -1:
+        sign_list.append('short')
+        math_sign.append(-100)    
+    elif sign == 0:
+        sign_list.append('no position')
+        math_sign.append(0)
+            
+         
+math_series = pd.Series(math_sign)    
+sign_series= pd.Series(sign_list)
+
+            
 # Get the unique years from the DateTimeIndex
 # Get the unique years from the DateTimeIndex
 '''years = pivot_df.index.year.unique()

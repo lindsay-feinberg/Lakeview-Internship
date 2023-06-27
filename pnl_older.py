@@ -38,11 +38,43 @@ def true_price (daily_trades, index, current_pnl, equity_quantity, current_weigh
 #making it more readable, and differentiate the files
 trade_file = r'L:/Lakeview Investment Group/Lindsay/abn_trades_lindsay.xlsx'
 bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/bloomberg_data_onesheet.xlsx'
+label_type_file = r'L:/Lakeview Investment Group/Lindsay/long_short_mixed_fixed.xlsx'
+#long_short_mixed_file = r'L:/Lakeview Investment Group/Lindsay/firm_exposure_together.xlsx'
 
 #reading in files
 trade_df = pd.read_excel(trade_file)
 bloomberg_df = pd.read_excel(bloomberg_file)
+label_type_df = pd.read_excel(label_type_file)
 
+#fixing index
+label_type_df.index = label_type_df.date_column
+label_type_df = label_type_df.drop(labels = 'date_column', axis =1)
+
+#long_short_mixed_df = pd.read_excel(long_short_mixed_file)
+
+'''#accessing only date part of long/short/mixed_df
+long_short_mixed_dates_df = long_short_mixed_df.head(118)
+
+#accessing only type
+label_df = long_short_mixed_df.tail(1)
+
+for column in label_df.columns:
+    index = 124
+    if label_df.at[index, column] == 'short':
+        long_short_mixed_dates_df[column] = 'short'
+    elif label_df.at[index, column] == 'long':
+        long_short_mixed_dates_df[column] = 'long'
+    elif ((label_df.at[index, column] == 'long LETF') | (label_df.at[index, column] == 'long LTF')):
+        long_short_mixed_dates_df[column] = 'long LETF'
+    elif ((label_df.at[index, column] == 'short LETF') | (label_df.at[index, column] == 'short LTF')):
+        long_short_mixed_dates_df[column] = 'short LETF'
+    elif label_df.at[index, column] == 'VIX':
+        long_short_mixed_dates_df[column] = 'VIX'
+
+long_short_mixed_dates_df.index = long_short_mixed_dates_df.date_column
+long_short_mixed_dates_df = long_short_mixed_dates_df.drop(labels = 'date_column', axis =1)
+
+'''
 #setting index to date for bloomberg so it is accessible
 bloomberg_df = bloomberg_df.set_index(bloomberg_df.DATES)
 
@@ -77,7 +109,7 @@ extra_dates = pd.Series(extra_dates)
 unique_trade_dates = pd.Series(unique_trade_dates)
 unique_trade_dates = pd.concat([extra_dates, unique_trade_dates])
 unique_trade_dates = unique_trade_dates.sort_values().reset_index(drop=True)
-        
+     
 #set beginning and end of time period
 s_date = datetime(2019, 9, 1)
 e_date = datetime(2022, 8, 31)
@@ -212,6 +244,7 @@ for date in unique_trade_dates:
         
         #setting up monthly_pnl
         month_pnl = 0
+        
         #looping through each ticker
         for ticker in pnl_copy.keys():
             if str(ticker) != 'nan':
@@ -221,17 +254,38 @@ for date in unique_trade_dates:
                current_pnl = pnl_copy[ticker][2]
                current_type = pnl_copy[ticker][3]
                
+               #getting ticker for label
+               space_ind = (ticker.index(' '))
+               label_name = ticker[0: space_ind]
+               
                #getting new price at the end of the month
                new_price = bloomberg_df.at[date, ticker]
+               
+               #getting label data
+               if date == datetime(2020, 6, 30):
+                   label_date = datetime(2020,7,1)
+               else:
+                   label_date = date
+               if label_name in label_type_df.columns:
+                   label = label_type_df.at[label_date, label_name]
+               else:
+                   label = 'no data'
+               
+               #fixing when have no position
+               if current_position == 0:
+                   label = 'no position'
+                   
+               #monthly filling pnl
                if str(new_price) == 'nan':
-                   pnl_copy[ticker] = [0, current_position, (current_pnl), current_type]
+                   pnl_copy[ticker] = [0, current_position, (current_pnl), current_type, label]
                    month_pnl += current_pnl
                else:   
                    if current_type == 'OPTION':
                        quantity = 100 * current_position   
                    new_pnl = current_pnl + (new_price - current_weighted_ave)*quantity
                    month_pnl += new_pnl
-                   pnl_copy[ticker] = [current_weighted_ave, current_position, new_pnl, current_type]
+                   
+                   pnl_copy[ticker] = [current_weighted_ave, current_position, new_pnl, current_type, label]
         #assigning values to monthly dictionary
         monthly_dict[date] = (pnl_copy, month_pnl)
         
