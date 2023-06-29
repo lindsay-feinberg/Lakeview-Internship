@@ -43,8 +43,8 @@ label_type_file = r'L:/Lakeview Investment Group/Lindsay/long_short_mixed_fixed.
 #long_short_mixed_file = r'L:/Lakeview Investment Group/Lindsay/firm_exposure_together.xlsx'
 
 #reading in files
-trade_df = pd.read_excel(trade_file)
-#trade_df = pd.read_excel(r'L:/Lakeview Investment Group/Lindsay/debugging_pnl.xlsx')
+#trade_df = pd.read_excel(trade_file)
+trade_df = pd.read_excel(r'L:/Lakeview Investment Group/Lindsay/debugging_pnl.xlsx')
 bloomberg_df = pd.read_excel(bloomberg_file)
 
 long_short = pd.read_excel(separated_file, sheet_name = 'Long and short')
@@ -120,7 +120,11 @@ extra_dates = [datetime(2019, 10, 31), datetime(2019, 11, 29),
                                 datetime(2024, 1, 19)]
 #debugging
 #extra_dates.
-#extra_dates.append(datetime(2020, 11, 30))
+extra_dates.append(datetime(2020, 11, 30))
+extra_dates.append(datetime(2020, 12, 31))
+extra_dates.append(datetime(2021, 1, 29))
+extra_dates.append(datetime(2021, 2, 26))
+extra_dates.append(datetime(2021, 3, 31))
 #combining and sorting full list of unique dates
 extra_dates = pd.Series(extra_dates)
 unique_trade_dates = pd.Series(unique_trade_dates)
@@ -201,7 +205,7 @@ for date in unique_trade_dates:
             #checking if opening or closing position
             if (((pnl_dict[tick][1] >= 0) and (day_trades.at[index, 'quantity'] > 0)) or 
                 ((pnl_dict[tick][1] <= 0) and (day_trades.at[index, 'quantity'] < 0))):
-                
+
                 #get new weighted ave
                 new_weighted_ave = ((current_weighted_ave*current_position + real_quantity*day_trades.at[index, 'price']) 
                                 / new_position)
@@ -211,7 +215,7 @@ for date in unique_trade_dates:
                 #get new pnl
                 new_pnl = (-day_trades.at[index, 'price'] + current_weighted_ave)*(quantity)
                 pnl_dict[tick] = [current_weighted_ave, new_position, new_pnl, day_trades.at[index, 'type']]
-            
+                
         else:
             #adding new ticker into dictionary
             pnl_dict[tick] = [day_trades.at[index, 'price'], real_quantity, 0, day_trades.at[index, 'type']]
@@ -251,6 +255,7 @@ for date in unique_trade_dates:
             pnl_dict[tick_assign_exer] = [current_weighted_ave, new_pos, current_pnl, current_type]
         else:
             pnl_dict[tick_assign_exer] = [0, option_quantity, 0, daily_trades.at[index, 'type']]
+        
         
         #equity
         if equity_name in pnl_dict.keys():
@@ -300,7 +305,6 @@ for date in unique_trade_dates:
     if date in d_list:
         #copying dictionary so values are not changed
         pnl_copy = pnl_dict.copy()
-        
         #setting up monthly_pnl
         month_pnl = 0
         
@@ -312,7 +316,7 @@ for date in unique_trade_dates:
                current_position = pnl_copy[ticker][1]
                current_pnl = pnl_copy[ticker][2]
                current_type = pnl_copy[ticker][3]
-               
+
                #getting ticker for label
                space_ind = (ticker.index(' '))
                label_name = ticker[0: space_ind]
@@ -348,6 +352,7 @@ for date in unique_trade_dates:
                    pnl_copy[ticker] = [current_weighted_ave, current_position, new_pnl, current_type, label]
         #assigning values to monthly dictionary
         monthly_dict[date] = (pnl_copy)
+        print(date, monthly_dict[date])
         
         #assigning new values to price and pnl
         for ticker in pnl_copy.keys():
@@ -415,6 +420,6 @@ final_showing_df['total_pnl'] = final_showing_df.long + final_showing_df.short +
 
     
     
-final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/fully_fixed_bloomberg.xlsx')
+#final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/showing_pnl_fixed_splits.xlsx')
 
 
