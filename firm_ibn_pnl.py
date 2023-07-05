@@ -106,4 +106,4 @@ concat_df['date'] = pd.to_datetime(concat_df.date, format = '%Y%m')
 concat_df['index_column'] = concat_df.index
 pivot_df = concat_df.pivot(index = 'date', columns = 'index_column', values = 'adjusted_pnl')
 pivot_df.index = pivot_df.index.strftime('%Y-%m')
-pivot_df.to_excel(excel_writer = r'L:/Lakeview Investment Group/Lindsay/ib_pnl_firm.xlsx')
+pivot_df.to_excel(excel_writer = r'L:/Lakeview Investment Group/Lindsay/ib_pnl_firm_good.xlsx')

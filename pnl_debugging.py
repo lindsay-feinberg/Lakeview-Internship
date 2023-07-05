@@ -120,11 +120,28 @@ extra_dates = [datetime(2019, 10, 31), datetime(2019, 11, 29),
                                 datetime(2024, 1, 19)]
 #debugging
 #extra_dates.
+'''
 extra_dates.append(datetime(2020, 11, 30))
+extra_dates.append(datetime(2020, 10, 30))
 extra_dates.append(datetime(2020, 12, 31))
-extra_dates.append(datetime(2021, 1, 29))
+extra_dates.append(datetime(2021, 10, 29))
 extra_dates.append(datetime(2021, 2, 26))
 extra_dates.append(datetime(2021, 3, 31))
+extra_dates.append(datetime(2020, 6, 30))'''
+
+#set beginning and end of time period
+s_date = datetime(2019, 9, 1)
+e_date = datetime(2022, 8, 31)
+
+#getting the list of last business day per month and add in 5/28 (before MDW)
+d_list = last_business_days(s_date, e_date)
+d_list.append(datetime(2021, 5, 28))
+
+for day in d_list:
+    if not day in extra_dates:
+        if (day != datetime(2021, 5 , 31)) & (day != datetime(2022, 9 , 30)):
+            extra_dates.append(day)
+
 #combining and sorting full list of unique dates
 extra_dates = pd.Series(extra_dates)
 unique_trade_dates = pd.Series(unique_trade_dates)
@@ -135,13 +152,7 @@ unique_trade_dates = pd.Series(unique_trade_dates)
 unique_trade_dates = pd.concat([extra_dates, unique_trade_dates])
 unique_trade_dates = unique_trade_dates.sort_values().reset_index(drop=True)
 
-#set beginning and end of time period
-s_date = datetime(2019, 9, 1)
-e_date = datetime(2022, 8, 31)
 
-#getting the list of last business day per month and add in 5/28 (before MDW)
-d_list = last_business_days(s_date, e_date)
-d_list.append(datetime(2021, 5, 28))
 
 #set up monthly dictionary
 monthly_dict = {}
