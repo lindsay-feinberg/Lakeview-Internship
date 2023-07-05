@@ -37,7 +37,7 @@ def true_price (daily_trades, index, current_pnl, equity_quantity, current_weigh
     return new_pnl_ae
 #making it more readable, and differentiate the files
 trade_file = r'L:/Lakeview Investment Group/Lindsay/abn_trades_lindsay.xlsx'
-#trade_file = r'L:/Lakeview Investment Group/Lindsay/abn_without_huge_tess.xlsx'
+#trade_file = r'L:/Lakeview Investment Group/Lindsay/debugging_pnl.xlsx'
 bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/bloomberg_data_onesheet.xlsx'
 label_type_file = r'L:/Lakeview Investment Group/Lindsay/long_short_mixed_fixed.xlsx'
 #long_short_mixed_file = r'L:/Lakeview Investment Group/Lindsay/firm_exposure_together.xlsx'
@@ -100,7 +100,7 @@ extra_dates = [datetime(2019, 10, 31), datetime(2019, 11, 29),
                                 datetime(2020, 4, 30), datetime(2020, 5, 29), 
                                 datetime(2020, 7,31), datetime(2020, 10, 30), 
                                 datetime(2020, 1, 17), datetime(2020, 3, 20),
-                                datetime(2020, 5, 22), datetime(2020, 6, 19),
+                                datetime(2020, 6, 19),
                                 datetime(2020, 7, 17), datetime(2022, 9, 2),
                                 datetime(2022, 9, 9), datetime(2022, 9, 16),
                                 datetime(2022, 10, 21), datetime(2022, 11, 18),
@@ -198,7 +198,7 @@ for date in unique_trade_dates:
                
             else:
                 #get new pnl
-                new_pnl = (-day_trades.at[index, 'price'] + current_weighted_ave)*(quantity)
+                new_pnl = (-day_trades.at[index, 'price'] + current_weighted_ave)*(quantity) + current_pnl
                 pnl_dict[tick] = [current_weighted_ave, new_position, new_pnl, day_trades.at[index, 'type']]
                 
     
@@ -273,12 +273,14 @@ for date in unique_trade_dates:
                 pnl_dict[equity_name] = [new_weighted_ave, new_pos, current_pnl, daily_trades.at[index, 'type']]
             else:
                 #get new pnl
-                new_pnl = (-daily_trades.at[index, 'price'] + current_weighted_ave)*(new_pos)
+                new_pnl = (-daily_trades.at[index, 'price'] + current_weighted_ave)*(equity_quantity) + current_pnl
                 pnl_dict[equity_name] = [current_weighted_ave, new_pos, new_pnl, daily_trades.at[index, 'type']]
             
         else:
-            pnl_dict[equity_name] = [(daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0]), equity_quantity, 0, daily_trades.at[index, 'type']]
-            
+            if daily_trades.at[index, 'type'] == 'EXER':
+                pnl_dict[equity_name] = [(daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0]), equity_quantity, 0, daily_trades.at[index, 'type']]
+            else:
+                pnl_dict[equity_name] = [(daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0]), equity_quantity, 0, daily_trades.at[index, 'type']]
     #checking if holding when it expires
     for index in expiring_df.index: 
         tick = expiring_df.at[index, 'ticker']
@@ -354,6 +356,8 @@ for date in unique_trade_dates:
                    if current_position == 0:
                        pnl_dict[ticker] = [0, 0, 0, current_type]
                    else:
+                       if (date == datetime(2020, 5 ,29)) & (ticker == 'XLF Equity'):
+                           print(current_position)
                        pnl_dict[ticker] = [bloomberg_df.at[date, ticker], current_position, 0, current_type]
         test_dict[date] = pnl_dict.copy()
 
@@ -415,7 +419,7 @@ for column in df.columns:
             #print(type(df.at[row, column]))
             df.at[row, column] = df.at[row, column][2]
     
-#df.to_excel(r'L:/Lakeview Investment Group/Lindsay/month_pnl_by_ticker.xlsx')    
-#final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/fully_fixed_bloomberg7.xlsx')
+#df.to_excel(r'L:/Lakeview Investment Group/Lindsay/month_pnl_by_ticker_SQQQ.xlsx')    
+#final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/fully_fixed_bloomberg12.xlsx')
 
 

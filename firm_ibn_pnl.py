@@ -6,7 +6,7 @@ from openpyxl import Workbook
 def read_in_files(file):
     pnl_dictionary = {}
     file_reader = pd.read_csv(file)
-    for (string_input, pnl) in zip (file_reader.Symbol, file_reader.adjusted_pnl):
+    for (string_input, pnl) in zip (file_reader.Symbol, file_reader['Mark-to-Market P/L Total']):
         # Convert each string to a series of characters
         string_series = pd.Series(list(string_input))
         
@@ -106,4 +106,4 @@ concat_df['date'] = pd.to_datetime(concat_df.date, format = '%Y%m')
 concat_df['index_column'] = concat_df.index
 pivot_df = concat_df.pivot(index = 'date', columns = 'index_column', values = 'adjusted_pnl')
 pivot_df.index = pivot_df.index.strftime('%Y-%m')
-pivot_df.to_excel(excel_writer = r'L:/Lakeview Investment Group/Lindsay/ib_pnl_firm_good.xlsx')
+pivot_df.to_excel(excel_writer = r'L:/Lakeview Investment Group/Lindsay/ib_pnl_firm_good2.xlsx')
