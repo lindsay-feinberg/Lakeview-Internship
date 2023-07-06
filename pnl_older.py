@@ -38,7 +38,8 @@ def true_price (daily_trades, index, current_pnl, equity_quantity, current_weigh
 #making it more readable, and differentiate the files
 trade_file = r'L:/Lakeview Investment Group/Lindsay/abn_trades_lindsay.xlsx'
 #trade_file = r'L:/Lakeview Investment Group/Lindsay/debugging_pnl.xlsx'
-bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/bloomberg_data_onesheet.xlsx'
+#bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/bloomberg_data_onesheet.xlsx'
+bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/bloomberg_data_copy.xlsx'
 label_type_file = r'L:/Lakeview Investment Group/Lindsay/long_short_mixed_fixed.xlsx'
 #long_short_mixed_file = r'L:/Lakeview Investment Group/Lindsay/firm_exposure_together.xlsx'
 
@@ -226,6 +227,8 @@ for date in unique_trade_dates:
             equity_name = 'PARA Equity'
         elif equity_name == 'FB Equity':
             equity_name = 'META Equity'
+        elif equity_name == 'SQQQ1 Equity':
+            equity_name = 'SQQQ Equity'
         
         #checking if ticker is in dictionary
         if tick_assign_exer in pnl_dict.keys():
@@ -258,8 +261,7 @@ for date in unique_trade_dates:
             
             #checking if opening or closing position
             if (((pnl_dict[equity_name][1] >= 0) and (daily_trades.at[index, 'quantity'] > 0)) or 
-                ((pnl_dict[equity_name][1] <= 0) and (daily_trades.at[index, 'quantity'] < 0))):
-                
+                ((pnl_dict[equity_name][1] <= 0) and (daily_trades.at[index, 'quantity'] < 0))):                
                 #get new weighted ave
                 if daily_trades.at[index, 'type'] == 'EXER':
                     new_weighted_ave = ((current_weighted_ave*current_position + 
@@ -273,7 +275,10 @@ for date in unique_trade_dates:
                 pnl_dict[equity_name] = [new_weighted_ave, new_pos, current_pnl, daily_trades.at[index, 'type']]
             else:
                 #get new pnl
-                new_pnl = (-daily_trades.at[index, 'price'] + current_weighted_ave)*(equity_quantity) + current_pnl
+                if daily_trades.at[index, 'type'] == 'EXER':
+                    new_pnl = (-daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
+                else:
+                    new_pnl = (-daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
                 pnl_dict[equity_name] = [current_weighted_ave, new_pos, new_pnl, daily_trades.at[index, 'type']]
             
         else:
@@ -356,8 +361,6 @@ for date in unique_trade_dates:
                    if current_position == 0:
                        pnl_dict[ticker] = [0, 0, 0, current_type]
                    else:
-                       if (date == datetime(2020, 5 ,29)) & (ticker == 'XLF Equity'):
-                           print(current_position)
                        pnl_dict[ticker] = [bloomberg_df.at[date, ticker], current_position, 0, current_type]
         test_dict[date] = pnl_dict.copy()
 
@@ -419,7 +422,7 @@ for column in df.columns:
             #print(type(df.at[row, column]))
             df.at[row, column] = df.at[row, column][2]
     
-#df.to_excel(r'L:/Lakeview Investment Group/Lindsay/month_pnl_by_ticker_SQQQ.xlsx')    
-#final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/fully_fixed_bloomberg12.xlsx')
+df.to_excel(r'L:/Lakeview Investment Group/Lindsay/month_pnl_by_ticker_5.xlsx')    
+final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/fully_fixed_bloomberg15.xlsx')
 
 
