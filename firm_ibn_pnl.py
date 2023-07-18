@@ -97,7 +97,12 @@ file_list = ([r'L:/Lakeview Investment Group/Lindsay/ib_pnl/201808_v1_ibpnl.csv'
               r'L:/Lakeview Investment Group/Lindsay/ib_pnl/202305_v1_ibpnl.csv'])
 
 concat_df = pd.DataFrame()
+label_type_file = r'L:/Lakeview Investment Group/Lindsay/long_short_mixed_fixed.xlsx'
+label_type_df = pd.read_excel(label_type_file)
+label_type_df.index = label_type_df.date_column
+label_type_df = label_type_df.drop(labels = 'date_column', axis =1)
 
+label_type_df.index = label_type_df.index.strftime('%Y-%m-%d')
 for file in file_list:
     individual_df = read_in_files(file)
     concat_df = pd.concat([concat_df, individual_df])
@@ -106,4 +111,28 @@ concat_df['date'] = pd.to_datetime(concat_df.date, format = '%Y%m')
 concat_df['index_column'] = concat_df.index
 pivot_df = concat_df.pivot(index = 'date', columns = 'index_column', values = 'adjusted_pnl')
 pivot_df.index = pivot_df.index.strftime('%Y-%m')
-pivot_df.to_excel(excel_writer = r'L:/Lakeview Investment Group/Lindsay/ib_pnl_firm_good2.xlsx')
+#pivot_df.to_excel(excel_writer = r'L:/Lakeview Investment Group/Lindsay/ib_pnl_firm_good2.xlsx')
+
+date_list = ['2018-08-31', '2018-09-28', '2018-10-31', '2018-11-30', '2018-12-31',
+             '2019-01-31', '2019-02-28', '2019-03-29', '2019-04-30', '2019-05-31',
+             '2019-06-28', '2019-07-31','2019-08-30', '2019-09-30', '2019-10-31', 
+             '2019-11-29', '2019-12-31','2020-01-31', '2020-02-28', '2020-03-31',
+             '2020-04-30', '2020-05-29','2020-06-15', '2020-07-31','2020-08-31', 
+             '2020-09-30', '2020-10-30','2020-11-30', '2020-12-31','2021-01-29', 
+             '2021-02-26', '2021-03-31','2021-04-30', '2021-05-28','2021-06-30',
+             '2021-07-30','2021-08-31','2021-09-30', '2021-10-29','2021-11-30', 
+             '2021-12-31','2022-01-31','2022-02-28', '2022-03-31','2022-04-29', 
+             '2022-05-31','2022-06-30', '2022-07-29','2022-08-31']
+
+transposed_df = pivot_df.T
+copy_df = transposed_df.copy()
+for row in transposed_df.index:
+    label_name = row
+    for date in date_list:
+        label_date = date
+        if label_name in label_type_df.columns:
+            label = label_type_df.at[label_date, label_name]
+        else:
+            label = 'no data'
+        copy_df.at[row, date] = label 
+copy_df.to_excel(excel_writer = r'L:/Lakeview Investment Group/Lindsay/labeled_pnl_older_ib2.xlsx')

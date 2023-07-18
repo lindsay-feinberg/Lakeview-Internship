@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Thu Jul  6 15:44:37 2023
+
+@author: lfeinberg
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Jun 20 08:58:17 2023
 
 @author: lfeinberg
@@ -35,33 +42,50 @@ def true_price (daily_trades, index, current_pnl, equity_quantity, current_weigh
     else:
         new_pnl_ae = current_pnl + equity_quantity*(daily_trades.at[index, 'price'] + current_weighted_ave)
     return new_pnl_ae
-#making it more readable, and differentiate the files
-trade_file = r'L:/Lakeview Investment Group/Lindsay/debugging_abn.xlsx'
-#trade_file = r'L:/Lakeview Investment Group/Lindsay/debugging_pnl.xlsx'
 
-bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/Bryan data/prices_updated.csv'
-#bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/copy_new_prices.xlsx'
+#FINISH
+def opening_position(pnl_dict, ticker, tick_assign_exer, trade_df, index, current_weighted_ave, current_position, current_pnl, new_pos, quantity, real_quantity, equity_quantity):
+    #checking if opening or closing position
+    if (((pnl_dict[ticker][1] >= 0) and (trade_df.at[index, 'quantity'] > 0)) or 
+        ((pnl_dict[ticker][1] <= 0) and (trade_df.at[index, 'quantity'] < 0))):                
+        #get new weighted ave
+        if trade_df.at[index, 'type'] == 'EXER':
+            new_weighted_ave = ((current_weighted_ave*current_position + 
+                                 ((trade_df.at[index, 'price'] + pnl_dict[tick_assign_exer][0])*equity_quantity)) 
+                                 / new_pos)
+        elif trade_df.at[index, 'type'] == 'ASSIGN':
+            new_weighted_ave = ((current_weighted_ave*current_position + 
+                                 ((trade_df.at[index, 'price'] - pnl_dict[tick_assign_exer][0])*equity_quantity)) 
+                                 / new_pos)
+        else:
+            new_weighted_ave = ((current_weighted_ave*current_position + real_quantity*trade_df.at[index, 'price']) 
+                            / new_pos)
+            
+        #filling dictionary
+        return [new_weighted_ave, new_pos, current_pnl, trade_df.at[index, 'type']]
+    else:
+        #get new pnl
+        if trade_df.at[index, 'type'] == 'EXER':
+            new_pnl = (-trade_df.at[index, 'price'] - pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
+        elif trade_df.at[index, 'type'] == 'ASSIGN':
+            new_pnl = (-trade_df.at[index, 'price'] + pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
+        else:
+            new_pnl = (-trade_df.at[index, 'price'] + current_weighted_ave)*(quantity) + current_pnl
+        return [current_weighted_ave, new_pos, new_pnl, trade_df.at[index, 'type']]
+        
+        
+#making it more readable, and differentiate the files
+trade_file = r'L:/Lakeview Investment Group/Lindsay/abn_trades_lindsay.xlsx'
+bloomberg_file = r'L:/Lakeview Investment Group/Lindsay/bloomberg_data_copy.xlsx'
 label_type_file = r'L:/Lakeview Investment Group/Lindsay/long_short_mixed_fixed.xlsx'
-#long_short_mixed_file = r'L:/Lakeview Investment Group/Lindsay/firm_exposure_together.xlsx'
 
 #reading in files
 trade_df = pd.read_excel(trade_file)
-#trade_df = pd.read_excel(r'L:/Lakeview Investment Group/Lindsay/debugging_pnl.xlsx')
-bloomberg_df = pd.read_csv(bloomberg_file)
+bloomberg_df = pd.read_excel(bloomberg_file ,index_col=0)
+label_type_df = pd.read_excel(label_type_file, index_col=0)
 
+#setting up final df that eventually goes to excel
 final_showing_df = pd.DataFrame({'long':[], 'short':[], 'short LETF':[], 'long LETF':[], 'VIX':[]})
-
-label_type_df = pd.read_excel(label_type_file)
-
-#fixing index
-label_type_df.index = label_type_df.date_column
-label_type_df = label_type_df.drop(labels = 'date_column', axis =1)
-
-#long_short_mixed_df = pd.read_excel(long_short_mixed_file)
-
-#setting index to date for bloomberg so it is accessible
-bloomberg_df['date'] = pd.to_datetime(bloomberg_df.date)
-bloomberg_df = bloomberg_df.set_index(bloomberg_df.date)
 
 #filtering the trade_df by the type
 stock_option_df = filtering_df(trade_df, 'OPTION', 'STOCK')
@@ -86,15 +110,14 @@ extra_dates = [datetime(2019, 10, 31), datetime(2019, 11, 29),
                                 datetime(2022, 10, 21), datetime(2022, 11, 18),
                                 datetime(2022, 12, 16), datetime(2023, 1, 20),
                                 datetime(2023, 2, 17), datetime(2023, 3, 17),
-                                datetime(2023, 6, 16)
-                                ]
-#debugging
-#extra_dates.
-#extra_dates.append(datetime(2020, 11, 30))
+                                datetime(2023, 6, 16), datetime(2023, 9, 15),
+                                datetime(2024, 1, 19)]
+
 #combining and sorting full list of unique dates
 extra_dates = pd.Series(extra_dates)
 unique_trade_dates = pd.Series(unique_trade_dates)
 unique_trade_dates = pd.concat([extra_dates, unique_trade_dates])
+unique_trade_dates = unique_trade_dates.sort_values().reset_index(drop=True)
 
 
 #set beginning and end of time period
@@ -105,27 +128,17 @@ e_date = datetime(2022, 8, 31)
 d_list = last_business_days(s_date, e_date)
 d_list.append(datetime(2021, 5, 28))
 
-d_list_ser = pd.Series(d_list)
-unique_trade_dates = pd.concat([d_list_ser, unique_trade_dates])
-unique_trade_dates = pd.unique(unique_trade_dates)
-unique_trade_dates = pd.Series(unique_trade_dates)
-unique_trade_dates = unique_trade_dates.sort_values().reset_index(drop=True)
-unique_trade_dates = unique_trade_dates.drop(labels = [199])
-unique_trade_dates = unique_trade_dates.reset_index(drop=True)
-
 #set up monthly dictionary
 monthly_dict = {}
 test_dict = {}
 exp_dict = {}
-#unique_trade_dates = unique_trade_dates[2:6]
 lis = []
-#month_pnl
-monthly_pnl_list = []
+
 #loop through each trade date
 for date in unique_trade_dates:  
     #get a dataframe with only trades of that day
     day_trades = stock_option_df[stock_option_df.date == date]
-    #expiring_df = stock_option_df[stock_option_df.expiration == date]
+    expiring_df = stock_option_df[stock_option_df.expiration == date]
     
     #loop through all trades of that day
     for index in day_trades.index:
@@ -173,20 +186,8 @@ for date in unique_trade_dates:
                 continue
             
             
-            #checking if opening or closing position
-            if (((current_position >= 0) and (day_trades.at[index, 'quantity'] > 0)) or 
-                ((current_position <= 0) and (day_trades.at[index, 'quantity'] < 0))):
-                
-                #get new weighted ave
-                new_weighted_ave = ((current_weighted_ave*current_position + real_quantity*day_trades.at[index, 'price']) 
-                                / new_position)
-                pnl_dict[tick] = [new_weighted_ave, new_position, current_pnl, day_trades.at[index, 'type']]
-              
-               
-            else:
-                #get new pnl
-                new_pnl = (-day_trades.at[index, 'price'] + current_weighted_ave)*(quantity) + current_pnl
-                pnl_dict[tick] = [current_weighted_ave, new_position, new_pnl, day_trades.at[index, 'type']]
+            pnl_dict[tick] = (opening_position(pnl_dict, tick, '',day_trades, index, current_weighted_ave, 
+                                               current_position, current_pnl, new_position, quantity, real_quantity, 0))
                 
     
         else:
@@ -204,9 +205,8 @@ for date in unique_trade_dates:
     for index in daily_trades.index:
         #ticker and quantities assign and exer
         tick_assign_exer = daily_trades.at[index, 'ticker']
-        split_string = tick_assign_exer.split()
-        equity_name = split_string[0] + ' Equity'
-        put_or_call = split_string[2][0]
+        space_index = (tick_assign_exer.index(' '))
+        equity_name = tick_assign_exer[0: space_index] + ' Equity'
         equity_quantity = daily_trades.at[index, 'quantity']
         option_quantity = equity_quantity/100
         
@@ -235,47 +235,6 @@ for date in unique_trade_dates:
         else:
             pnl_dict[tick_assign_exer] = [0, option_quantity, 0, daily_trades.at[index, 'type']]
         
-        '''#equity
-        if equity_name in pnl_dict.keys():
-            #getting current values 
-            current_weighted_ave = pnl_dict[equity_name][0]
-            current_position = pnl_dict[equity_name][1]
-            current_pnl = pnl_dict[equity_name][2]
-            current_type = pnl_dict[equity_name][3]
-            
-            #getting new position
-            new_pos = equity_quantity+current_position
-            
-            #checking if opening or closing position
-            if (((pnl_dict[equity_name][1] >= 0) and (daily_trades.at[index, 'quantity'] > 0)) or 
-                ((pnl_dict[equity_name][1] <= 0) and (daily_trades.at[index, 'quantity'] < 0))):                
-                #get new weighted ave
-                if daily_trades.at[index, 'type'] == 'EXER':
-                    new_weighted_ave = ((current_weighted_ave*current_position + 
-                                         ((daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0])*equity_quantity)) 
-                                         / new_pos)
-                else:
-                    new_weighted_ave = ((current_weighted_ave*current_position + 
-                                         ((daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0])*equity_quantity)) 
-                                         / new_pos)
-                #filling dictionary
-                pnl_dict[equity_name] = [new_weighted_ave, new_pos, current_pnl, daily_trades.at[index, 'type']]
-            else:
-                #get new pnl
-                if daily_trades.at[index, 'type'] == 'EXER':
-                    new_pnl = (-daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
-                    #new_pnl = (-daily_trades.at[index, 'price'] + current_weighted_ave)*(equity_quantity) + current_pnl
-                else:
-                    new_pnl = (-daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
-                    #new_pnl = (-daily_trades.at[index, 'price'] + current_weighted_ave)*(equity_quantity) + current_pnl
-                pnl_dict[equity_name] = [current_weighted_ave, new_pos, new_pnl, daily_trades.at[index, 'type']]
-            
-        else:
-            if daily_trades.at[index, 'type'] == 'EXER':
-                pnl_dict[equity_name] = [(daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0]), equity_quantity, 0, daily_trades.at[index, 'type']]
-            else:
-                pnl_dict[equity_name] = [(daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0]), equity_quantity, 0, daily_trades.at[index, 'type']]
-    '''
         #equity
         if equity_name in pnl_dict.keys():
             #getting current values 
@@ -288,36 +247,9 @@ for date in unique_trade_dates:
             new_pos = equity_quantity+current_position
             
             #checking if opening or closing position
-            if (((pnl_dict[equity_name][1] >= 0) and (daily_trades.at[index, 'quantity'] > 0)) or 
-                ((pnl_dict[equity_name][1] <= 0) and (daily_trades.at[index, 'quantity'] < 0))):                
-                #get new weighted ave
-                if put_or_call == 'P':
-                    new_weighted_ave = ((current_weighted_ave*current_position + 
-                                         ((daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0])*equity_quantity)) 
-                                         / new_pos)
-                else:
-                    new_weighted_ave = ((current_weighted_ave*current_position + 
-                                         ((daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0])*equity_quantity)) 
-                                         / new_pos)
-                #filling dictionary
-                pnl_dict[equity_name] = [new_weighted_ave, new_pos, current_pnl, daily_trades.at[index, 'type']]
-            else:
-                #get new pnl
-                if put_or_call == 'P':
-                    new_pnl = (-daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
-                    #new_pnl = (-daily_trades.at[index, 'price'] + current_weighted_ave)*(equity_quantity) + current_pnl
-                else:
-                    new_pnl = (-daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0] + current_weighted_ave)*(equity_quantity) + current_pnl
-                    #new_pnl = (-daily_trades.at[index, 'price'] + current_weighted_ave)*(equity_quantity) + current_pnl
-                pnl_dict[equity_name] = [current_weighted_ave, new_pos, new_pnl, daily_trades.at[index, 'type']]
-            
-        else:
-            if put_or_call == 'P':
-                pnl_dict[equity_name] = [(daily_trades.at[index, 'price'] - pnl_dict[tick_assign_exer][0]), equity_quantity, 0, daily_trades.at[index, 'type']]
-            else:
-                pnl_dict[equity_name] = [(daily_trades.at[index, 'price'] + pnl_dict[tick_assign_exer][0]), equity_quantity, 0, daily_trades.at[index, 'type']]
+            pnl_dict[equity_name] = (opening_position(pnl_dict, equity_name, tick_assign_exer, daily_trades, 
+                                    index, current_weighted_ave, current_position, current_pnl, new_pos, 0, 0, equity_quantity))
     
-    '''
     #checking if holding when it expires
     for index in expiring_df.index: 
         tick = expiring_df.at[index, 'ticker']
@@ -327,7 +259,7 @@ for date in unique_trade_dates:
             current_pnl = pnl_dict[tick][2]
             current_type = pnl_dict[tick][3]
             pnl_dict[tick] = [current_weighted_ave, 0, current_pnl + current_weighted_ave*current_position*100, current_type]       
-    '''        
+            
     #checking if end of month
     if date in d_list:
         #copying dictionary so values are not changed
@@ -363,7 +295,7 @@ for date in unique_trade_dates:
                    label = 'no data'
                    
                #monthly filling pnl
-               if (new_price == 0) | (str(new_price) == 'nan'):
+               if str(new_price) == 'nan':
                    if current_pnl == 0:
                        label = 'no position'
                    pnl_copy[ticker] = [0, current_position, (current_pnl), current_type, label]
@@ -397,16 +329,7 @@ for date in unique_trade_dates:
         test_dict[date] = pnl_dict.copy()
 
 # Convert the dictionary of dictionaries into a DataFrame
-df = pd.DataFrame.from_dict(monthly_dict, orient='index')  
-for date in df.index:
-    month_pnl = 0
-    for ticker in df.columns:
-        if isinstance(df.at[date, ticker], list) :
-            if not pd.isna(df.at[date,ticker][2]):
-                month_pnl += df.at[date,ticker][2]
-    monthly_pnl_list.append(month_pnl)
-
-df['month_pnl'] = pd.Series(monthly_pnl_list, index = df.index)
+df = pd.DataFrame.from_dict(monthly_dict, orient='index')
 
 final_df = df.transpose()
 
@@ -454,14 +377,7 @@ for column in df.columns:
             #print(type(df.at[row, column]))
             df.at[row, column] = df.at[row, column][2]
     
-df.to_excel(r'L:/Lakeview Investment Group/Lindsay/month_pnl_by_ticker_38.xlsx')    
-final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/fully_fixed_bloomberg48.xlsx')
+df.to_excel(r'L:/Lakeview Investment Group/Lindsay/month_pnl_by_ticker_6.xlsx')    
+final_showing_df.to_excel(r'L:/Lakeview Investment Group/Lindsay/fully_fixed_bloomberg16.xlsx')
 
-viewing_dict = {}
-for diction in test_dict.keys():
-    in_dict = {}
-    for tick in test_dict[diction].keys():
-        if test_dict[diction][tick][0] != 0:
-            in_dict[tick] = test_dict[diction][tick]
-    viewing_dict[diction] = in_dict
 
